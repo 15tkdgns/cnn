@@ -20,7 +20,9 @@
 
 ## 📊 데이터 흐름 및 통신 구조
 
-이 프로젝트의 각 컴포넌트가 어떻게 데이터를 주고받는지 이해하려면 **[DATA_FLOW.md](DATA_FLOW.md)** 문서를 참조하세요.
+이 프로젝트의 각 컴포넌트가 어떻게 데이터를 주고받는지 이해하려면 다음 문서를 참조하세요:
+- **[DATA_FLOW.md](DATA_FLOW.md)** - 데이터 흐름 상세 설명
+- **[diagrams/](diagrams/)** - 시각화 다이어그램 및 플로우차트
 
 ### 간단 요약
 
@@ -49,19 +51,30 @@ ResNet18 / YOLO 모델 (GPU)
 llm_prj/
 ├── README.md                       # 프로젝트 설명 (본 파일)
 ├── DATA_FLOW.md                    # 데이터 흐름 및 통신 구조 (상세)
+├── PROJECT_STRUCTURE.md            # 프로젝트 구조 상세 가이드
 ├── DEPLOYMENT.md                   # 배포 가이드
 ├── start_backend.sh                # 백엔드 시작 스크립트
 ├── start_frontend.sh               # 프론트엔드 시작 스크립트
 ├── requirements.txt                # Python 패키지 의존성
 │
+├── diagrams/                       # 📊 시각화 다이어그램
+│   ├── MERMAID_GUIDE.md            # Mermaid 다이어그램 보는 방법
+│   ├── PROJECT_FLOW_MERMAID.md     # Mermaid 플로우차트 (10종)
+│   ├── PROJECT_FLOW_DIAGRAM.md     # 텍스트 기반 상세 흐름도
+│   └── mermaid_example.md          # Mermaid 예제 모음
+│
 ├── notebooks/                      # Jupyter Notebooks
 │   ├── food101_training.py         # 훈련 스크립트
-│   └── food101_training_optimal.ipynb  # 메인 훈련 노트북
+│   └── food101_training.ipynb      # 메인 훈련 노트북
 │
 ├── api/                            # FastAPI 백엔드
 │   ├── main.py                     # FastAPI 애플리케이션
+│   ├── config.py                   # 설정 파일
+│   ├── models.py                   # 데이터 모델
+│   ├── utils.py                    # 유틸리티 함수
+│   ├── gradcam.py                  # Grad-CAM 시각화
+│   ├── yolo_detector.py            # YOLO 객체 탐지
 │   ├── requirements.txt            # API 의존성
-│   ├── test_client.py              # API 테스트 스크립트
 │   ├── start_server.sh             # 서버 시작 스크립트
 │   ├── static/                     # 정적 파일
 │   │   └── index.html              # 기본 웹 인터페이스
@@ -74,7 +87,10 @@ llm_prj/
 │   │   ├── index.js                # React 엔트리포인트
 │   │   ├── index.css               # 글로벌 스타일
 │   │   ├── App.js                  # 메인 컴포넌트
-│   │   └── App.css                 # ChatGPT 스타일 CSS
+│   │   ├── App.css                 # ChatGPT 스타일 CSS
+│   │   ├── components/             # React 컴포넌트
+│   │   ├── hooks/                  # 커스텀 훅
+│   │   └── services/               # API 서비스
 │   ├── package.json                # NPM 의존성
 │   └── README.md                   # 프론트엔드 문서
 │
@@ -89,7 +105,9 @@ llm_prj/
 │
 ├── scripts/                        # 유틸리티 스크립트
 │   ├── download_dataset.py         # 데이터셋 다운로드
-│   └── explore_dataset.py          # 데이터 탐색
+│   ├── explore_dataset.py          # 데이터 탐색
+│   ├── setup_conda.sh              # Conda 환경 설정
+│   └── install_miniconda.sh        # Miniconda 설치
 │
 └── docs/                           # 문서 및 발표 자료
     ├── presentation_script.txt     # 발표 스크립트
@@ -331,3 +349,40 @@ const result = await response.json();
 ## 연락처
 
 프로젝트 관련 문의사항이 있으시면 이슈를 생성해주세요.
+
+## 📊 시각화 다이어그램
+
+프로젝트의 흐름과 구조를 시각적으로 이해하기 위해 다양한 다이어그램을 제공합니다:
+
+### 다이어그램 종류
+
+**[diagrams/](diagrams/)** 폴더에는 다음 문서들이 포함되어 있습니다:
+
+1. **[MERMAID_GUIDE.md](diagrams/MERMAID_GUIDE.md)** 
+   - Mermaid 다이어그램 보는 방법
+   - GitHub, VS Code, 온라인 에디터 사용법
+   - 6가지 보기 방법 상세 가이드
+
+2. **[PROJECT_FLOW_MERMAID.md](diagrams/PROJECT_FLOW_MERMAID.md)** 
+   - 10가지 Mermaid 플로우차트
+   - 시스템 아키텍처, 훈련 파이프라인, API 흐름
+   - GitHub에서 자동 렌더링
+
+3. **[PROJECT_FLOW_DIAGRAM.md](diagrams/PROJECT_FLOW_DIAGRAM.md)** 
+   - 텍스트 기반 상세 흐름도
+   - ASCII 아트 스타일
+   - 모든 환경에서 볼 수 있음
+
+4. **[mermaid_example.md](diagrams/mermaid_example.md)** 
+   - 7가지 다이어그램 예제
+   - 학습용 샘플 코드
+
+### 빠른 확인 방법
+
+**GitHub에서 바로 보기** (가장 쉬움):
+```
+https://github.com/15tkdgns/cnn/tree/main/diagrams
+```
+
+모든 Mermaid 다이어그램이 자동으로 렌더링됩니다!
+
