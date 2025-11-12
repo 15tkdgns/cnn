@@ -52,7 +52,7 @@ graph TB
 ## 2. 모델 훈련 파이프라인
 
 ```mermaid
-flowchart TD
+flowchart LR
     Start([사용자 실행<br/>download_dataset.py]) --> A[Kaggle API 인증<br/>~/.kaggle/kaggle.json]
     A --> B[kagglehub.dataset_download]
     B --> C[데이터셋 다운로드<br/>~/.cache/kagglehub/food-101/]
@@ -98,7 +98,7 @@ flowchart TD
 ## 3. API 서버 시작 과정
 
 ```mermaid
-flowchart TD
+flowchart LR
     Start([python api/main.py]) --> A[FastAPI 앱 초기화<br/>app = FastAPI]
     A --> B[CORS 미들웨어 추가<br/>allow_origins: *]
     B --> C[startup 이벤트 핸들러]
@@ -175,7 +175,7 @@ sequenceDiagram
 ## 5. Grad-CAM 생성 과정
 
 ```mermaid
-flowchart TD
+flowchart LR
     Start([POST /predict/gradcam]) --> A[이미지 로드 & 전처리]
 
     A --> B[GradCAM 설정<br/>target_layer = layer4]
@@ -203,7 +203,7 @@ flowchart TD
 ## 6. YOLO 객체 탐지
 
 ```mermaid
-flowchart TD
+flowchart LR
     Start([POST /detect]) --> A[이미지 로드<br/>PIL Image → numpy array]
 
     A --> B[YOLO 전처리<br/>Letterbox resize → 640x640<br/>Normalize & Tensor 변환]
@@ -231,56 +231,36 @@ flowchart TD
 ## 7. 프론트엔드 상호작용
 
 ```mermaid
-stateDiagram-v2
-    [*] --> 대기중: 페이지 로드
+flowchart LR
+    Start([페이지 로드]) --> A[대기중]
 
-    대기중 --> 이미지선택: 드래그&드롭 / 클릭 / Ctrl+V
+    A -->|드래그&드롭/클릭/Ctrl+V| B[이미지선택]
 
-    이미지선택 --> 검증: handleFileSelect(file)
+    B --> C{검증<br/>handleFileSelect}
 
-    검증 --> 에러표시: 이미지 파일 아님
-    검증 --> State업데이트: 유효한 이미지
+    C -->|이미지 아님| D[에러표시]
+    C -->|유효한 이미지| E[State업데이트<br/>setImage]
 
-    에러표시 --> 대기중
+    D --> A
 
-    State업데이트 --> 미리보기생성: setImage(file)
-    미리보기생성 --> 미리보기표시: FileReader.readAsDataURL()
+    E --> F[미리보기생성<br/>FileReader.readAsDataURL]
+    F --> G[미리보기표시]
 
-    미리보기표시 --> 분석대기: 이미지 표시 완료
+    G --> H[분석대기]
+    H -->|분석하기 클릭| I[분석시작]
 
-    분석대기 --> 분석시작: [분석하기] 버튼 클릭
+    I --> J[로딩중<br/>setLoading true]
+    J --> K[엔드포인트결정<br/>mode 확인]
+    K --> L[API요청<br/>FormData 생성]
 
-    분석시작 --> 로딩중: setLoading(true)
+    L --> M[서버처리<br/>axios.post]
+    M --> N{응답수신}
 
-    로딩중 --> 엔드포인트결정: mode 확인
+    N -->|성공| O[결과표시<br/>setResult]
+    N -->|실패| D
 
-    엔드포인트결정 --> API요청: FormData 생성
-
-    API요청 --> 서버처리: axios.post()
-
-    서버처리 --> 응답수신
-
-    응답수신 --> 결과표시: setResult(data)
-    응답수신 --> 에러표시: 에러 발생
-
-    결과표시 --> 완료: 화면 렌더링
-
-    완료 --> 대기중: 새 분석
-
-    note right of 검증
-        file.type.startsWith('image/')
-    end note
-
-    note right of 엔드포인트결정
-        mode === 'detect' → /detect
-        showGradCAM → /predict/gradcam
-        기본 → /predict
-    end note
-
-    note right of 결과표시
-        분류: 클래스명, 신뢰도, Top-5
-        탐지: 어노테이션, 객체 정보
-    end note
+    O --> P[완료]
+    P -->|새 분석| A
 ```
 
 ---
@@ -290,7 +270,7 @@ stateDiagram-v2
 ### 8.1 훈련 시 데이터 변환
 
 ```mermaid
-flowchart TD
+flowchart LR
     A[apple_pie/1001.jpg<br/>1.2MB, JPEG, 1024x768] --> B[PIL.Image.open<br/>RGB Mode<br/>Size: 1024, 768]
 
     B --> C[transforms.Resize 256<br/>Size: 256, 192<br/>aspect ratio 유지]
@@ -331,7 +311,7 @@ flowchart TD
 ### 8.2 추론 시 데이터 변환
 
 ```mermaid
-flowchart TD
+flowchart LR
     A[pizza.jpg<br/>245KB, JPEG] --> B[브라우저: File 객체<br/>type: image/jpeg<br/>size: 251234 bytes]
 
     B --> C[FileReader.readAsDataURL<br/>→ Data URL base64<br/>data:image/jpeg;base64,/9j/...]
