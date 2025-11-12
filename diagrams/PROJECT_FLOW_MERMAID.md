@@ -635,7 +635,7 @@ flowchart TD
     Start([HTTP Response<br/>JSON 수신])
 
     subgraph parse["응답 파싱"]
-        R[axios 파싱<br/>→ JavaScript 객체<br/>{ success, prediction, top5 }]
+        R[axios 파싱<br/>→ JavaScript 객체<br/>success, prediction, top5]
     end
 
     subgraph state_update["상태 업데이트"]
