@@ -35,7 +35,7 @@ graph TB
         H --> J[Grad-CAM Visualizer]
         H --> K[YOLO Object Detector<br/>yolo11n.pt]
 
-        I --> L[NVIDIA GPU CUDA<br/>모델 추론 가속<br/>85-95% GPU 사용률]
+        I --> L[NVIDIA GPU CUDA<br/>모델 추론 가속]
         J --> L
         K --> L
     end
@@ -168,8 +168,6 @@ sequenceDiagram
     N->>F: Response
     F->>F: setResult(response.data)
     F->>U: 화면에 결과 표시<br/>음식 이름<br/>신뢰도 %<br/>Top-5 바 차트
-
-    Note over B,M: 전체 처리 시간: 100-300ms
 ```
 
 ---
@@ -178,46 +176,26 @@ sequenceDiagram
 
 ```mermaid
 flowchart TD
-    Start([POST /predict/gradcam]) --> A[이미지 로드 & 전처리<br/>1-5단계는 /predict와 동일]
+    Start([POST /predict/gradcam]) --> A[이미지 로드 & 전처리]
 
-    A --> B[GradCAM 객체 생성<br/>target_layer = layer4-1]
+    A --> B[GradCAM 설정<br/>target_layer = layer4]
 
-    B --> C[Forward Hook 등록]
-    C --> C1[def forward_hook m,i,o:<br/>activations = o.detach<br/>shape: 1,512,7,7]
+    B --> C[Forward Pass<br/>activations 저장<br/>shape: 1,512,7,7]
 
-    C1 --> D[Forward Pass]
-    D --> D1[outputs = model input<br/>→ Logits 1, 101<br/>activations 자동 저장]
+    C --> D[Backward Pass<br/>class_score.backward<br/>gradients 저장<br/>shape: 1,512,7,7]
 
-    D1 --> E[Backward Hook 등록 & 실행]
-    E --> E1[def backward_hook m,gi,go:<br/>gradients = go0.detach<br/>shape: 1,512,7,7]
+    D --> E[CAM 계산<br/>weights = gradients.mean<br/>cam = weights * activations<br/>→ 1, 7, 7]
 
-    E1 --> E2[model.zero_grad]
-    E2 --> E3[class_score = outputs0,target_class]
-    E3 --> E4[class_score.backward<br/>gradients 자동 저장]
+    E --> F[히트맵 생성<br/>resize → 224x224<br/>colormap JET 적용<br/>원본 이미지 오버레이]
 
-    E4 --> F[CAM 계산]
-    F --> F1[채널별 가중치 계산<br/>weights = gradients.mean dim2,3<br/>→ 1, 512, 1, 1]
+    F --> G[Base64 인코딩<br/>PNG 형식]
 
-    F1 --> F2[가중 합산<br/>cam = weights * activations.sum 1<br/>→ 1, 7, 7]
-
-    F2 --> F3[ReLU & 정규화<br/>cam = F.relu cam<br/>cam = normalize cam<br/>→ 0, 1 범위]
-
-    F3 --> G[히트맵 생성]
-    G --> G1[원본 크기로 리사이즈<br/>cv2.resize cam, 224, 224]
-    G1 --> G2[컬러맵 적용 JET<br/>cv2.applyColorMap]
-    G2 --> G3[원본 이미지와 오버레이<br/>heatmap * 0.4 + original * 0.6]
-
-    G3 --> H[Base64 인코딩]
-    H --> H1[buffered = BytesIO]
-    H1 --> H2[overlay_img.save buffered, PNG]
-    H2 --> H3[base64.b64encode]
-
-    H3 --> End([JSON 응답<br/>success, prediction, top5<br/>gradcam: heatmap_image<br/>data:image/png;base64,...])
+    G --> End([JSON 응답<br/>gradcam: heatmap_image])
 
     style Start fill:#e1f5ff
     style End fill:#e1ffe1
-    style F fill:#fff5e1
-    style G fill:#ffe1ff
+    style E fill:#fff5e1
+    style F fill:#ffe1ff
 ```
 
 ---
@@ -226,42 +204,26 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    Start([POST /detect]) --> A[이미지 로드 및 변환<br/>PIL Image → numpy array]
+    Start([POST /detect]) --> A[이미지 로드<br/>PIL Image → numpy array]
 
-    A --> B[YOLO 추론<br/>detector = get_yolo_detector]
-    B --> B1[results = model.predict<br/>source=image_array<br/>conf=0.25<br/>verbose=False]
+    A --> B[YOLO 전처리<br/>Letterbox resize → 640x640<br/>Normalize & Tensor 변환]
 
-    B1 --> C{YOLO 내부 처리}
-    C --> C1[Letterbox resize<br/>→ 640, 640]
-    C1 --> C2[Normalize 0,1]
-    C2 --> C3[Tensor 변환]
+    B --> C[YOLO11n 추론<br/>model.predict<br/>conf threshold: 0.25]
 
-    C3 --> D[YOLO11n Forward Pass]
-    D --> D1[Detections<br/>x1,y1,x2,y2,conf,cls, ...]
+    C --> D[NMS 후처리<br/>중복 박스 제거<br/>IoU threshold: 0.45]
 
-    D1 --> E[NMS 비최대 억제<br/>중복 박스 제거<br/>IoU threshold: 0.45]
+    D --> E[결과 추출<br/>boxes, confidences, classes]
 
-    E --> F[결과 추출]
-    F --> F1[boxes = result.boxes.xyxy N, 4]
-    F1 --> F2[confs = result.boxes.conf N,]
-    F2 --> F3[clses = result.boxes.cls N,]
+    E --> F[어노테이션 이미지 생성<br/>바운딩 박스 & 레이블 표시]
 
-    F3 --> G[어노테이션 이미지 생성<br/>result.plot]
-    G --> G1[바운딩 박스 그리기]
-    G1 --> G2[클래스 레이블 표시]
-    G2 --> G3[신뢰도 % 표시]
+    F --> G[Base64 인코딩<br/>BGR → RGB → PNG]
 
-    G3 --> H[Base64 인코딩]
-    H --> H1[BGR → RGB 변환]
-    H1 --> H2[PIL Image 변환]
-    H2 --> H3[Base64 string]
-
-    H3 --> End([JSON 응답<br/>success, num_objects<br/>detections: class, confidence, bbox<br/>annotated_image: base64])
+    G --> End([JSON 응답<br/>detections & annotated_image])
 
     style Start fill:#e1f5ff
     style End fill:#e1ffe1
     style C fill:#fff5e1
-    style E fill:#ffe1ff
+    style D fill:#ffe1ff
 ```
 
 ---
@@ -296,7 +258,7 @@ stateDiagram-v2
 
     API요청 --> 서버처리: axios.post()
 
-    서버처리 --> 응답수신: 2-3초 대기
+    서버처리 --> 응답수신
 
     응답수신 --> 결과표시: setResult(data)
     응답수신 --> 에러표시: 에러 발생
@@ -329,7 +291,7 @@ stateDiagram-v2
 
 ```mermaid
 flowchart TD
-    A[📁 apple_pie/1001.jpg<br/>1.2MB, JPEG, 1024x768] --> B[PIL.Image.open<br/>RGB Mode<br/>Size: 1024, 768]
+    A[apple_pie/1001.jpg<br/>1.2MB, JPEG, 1024x768] --> B[PIL.Image.open<br/>RGB Mode<br/>Size: 1024, 768]
 
     B --> C[transforms.Resize 256<br/>Size: 256, 192<br/>aspect ratio 유지]
 
@@ -370,7 +332,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A[📷 pizza.jpg<br/>245KB, JPEG] --> B[브라우저: File 객체<br/>type: image/jpeg<br/>size: 251234 bytes]
+    A[pizza.jpg<br/>245KB, JPEG] --> B[브라우저: File 객체<br/>type: image/jpeg<br/>size: 251234 bytes]
 
     B --> C[FileReader.readAsDataURL<br/>→ Data URL base64<br/>data:image/jpeg;base64,/9j/...]
 
@@ -406,7 +368,7 @@ flowchart TD
 
     R --> S[setResult response.data<br/>React State 업데이트]
 
-    S --> T[화면 렌더링<br/>🍕 Pizza<br/>신뢰도: 85.23%<br/>Top 5 예측 바 차트]
+    S --> T[화면 렌더링<br/>Pizza<br/>신뢰도: 85.23%<br/>Top 5 예측 바 차트]
 
     style A fill:#e1f5ff
     style D fill:#e1ffe1
@@ -421,13 +383,13 @@ flowchart TD
 ```mermaid
 sequenceDiagram
     autonumber
-    participant User as 👤 사용자
-    participant Browser as 🌐 브라우저
-    participant React as ⚛️ React App
-    participant Network as 🌍 네트워크
-    participant FastAPI as 🚀 FastAPI
-    participant Model as 🧠 ResNet18
-    participant GPU as 💎 NVIDIA GPU
+    participant User as 사용자
+    participant Browser as 브라우저
+    participant React as React App
+    participant Network as 네트워크
+    participant FastAPI as FastAPI
+    participant Model as ResNet18
+    participant GPU as NVIDIA GPU
 
     User->>Browser: 이미지 파일 선택 (pizza.jpg)
     Browser->>React: File 객체 전달
@@ -459,9 +421,6 @@ sequenceDiagram
     React->>React: State 업데이트 (setResult)
     React->>Browser: 결과 렌더링
     Browser->>User: 화면에 표시<br/>(음식명, 신뢰도, Top-5)
-
-    Note over FastAPI,GPU: 처리 시간: 100-300ms
-    Note over React,Browser: 전체 응답 시간: 0.5-1초
 ```
 
 ---
@@ -486,7 +445,6 @@ mindmap
         float16 연산
       배치 처리
         batch_size: 128
-        2배 속도 향상
       메모리 관리
         pin_memory: False
         메모리 절약
